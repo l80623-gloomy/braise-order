@@ -165,6 +165,8 @@ button { font-family: inherit; cursor: pointer; }
 .vessel { position: absolute; aspect-ratio: 1; }
 .vessel img { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .v-food { position: absolute; inset: 0; }
+.vessel-strainer .v-front { opacity: .88; }   /* 網籃半透，隱約看得到裡面的食材 */
+.vessel .jar { position: absolute; inset: auto; left: 37%; top: -46%; width: 27%; height: auto; z-index: 3; }
 .v-food img, .v-food i { position: absolute; }
 .v-food img { width: auto; height: auto; aspect-ratio: 1; }
 .steam { position: absolute; width: 18px; height: 60px; border-radius: 50%; background: rgba(255,255,255,.5); filter: blur(6px); }

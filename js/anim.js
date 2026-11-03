@@ -1,4 +1,4 @@
-// 動畫一：食材投入麵切；動畫二：麵切倒入碗公＋配料
+// 動畫一：食材拋進麵切；動畫二：麵切倒入碗公＋配料
 import { makeVessel, slot } from './vessel.js';
 import { img } from './menu.js';
 
@@ -20,14 +20,35 @@ function pieces(items) {
   return out.slice(0, MAX_PIECES);
 }
 
-function foodImg(id, pos) {
+function foodImg(src, pos) {
   const im = document.createElement('img');
-  im.src = img(id);
+  im.src = src;
   im.style.left = pos.x + '%';
   im.style.top = pos.y + '%';
   im.style.width = pos.size + '%';
+  im.style.zIndex = Math.round(pos.y * 10);   // 越靠前（越下方）的蓋在上面
   gsap.set(im, { xPercent: -50, yPercent: -50 });
   return im;
+}
+
+// 拋物線：水平等速、垂直受重力（二次貝茲曲線），終點是 (0,0)＝落點
+// fx, fy：起點相對落點的位移（px）；lift：頂點比起點／終點中較高者再高多少
+function toss(tl, im, { fx, fy, lift, dur, at, spin, vessel }) {
+  const apex = Math.min(fy, 0) - lift;
+  const r0 = spin, r1 = (Math.random() - .5) * 24;
+  const p = { t: 0 };
+  tl.set(im, { opacity: 1 }, at);
+  tl.to(p, {
+    t: 1, duration: dur, ease: 'none',
+    onUpdate() {
+      const t = p.t, u = 1 - t;
+      gsap.set(im, { x: fx * u, y: u * u * fy + 2 * u * t * apex, rotation: r0 * u + r1 * t });
+    },
+  }, at);
+  // 落地：壓扁再彈回，容器跟著輕輕一沉
+  tl.to(im, { scaleX: 1.12, scaleY: .86, duration: .09, ease: 'power1.out' }, at + dur)
+    .to(im, { scaleX: 1, scaleY: 1, duration: .35, ease: 'elastic.out(1.1, .45)' }, at + dur + .09);
+  if (vessel) tl.to(vessel, { y: '+=5', duration: .08, yoyo: true, repeat: 1, ease: 'sine.out' }, at + dur);
 }
 
 function steam(parent, x, y, n = 3) {
@@ -60,15 +81,21 @@ export function dropToStrainer(items) {
     const tl = gsap.timeline();
     tl.from(v, { y: 300, duration: .6, ease: 'back.out(1.4)' });
     list.forEach((id, i) => {
-      const p = slot(v.rim, i, list.length);
-      const im = foodImg(id, p);
+      const im = foodImg(img(id), slot(v.rim, i, list.length));
+      gsap.set(im, { opacity: 0 });
       v.food.appendChild(im);
-      const fromX = (Math.random() - .5) * w * 1.2;
-      tl.fromTo(im, { x: fromX, y: -window.innerHeight * .75, rotation: (Math.random() - .5) * 200, opacity: 1 },
-        { x: 0, duration: .75, ease: 'power1.out', rotation: (Math.random() - .5) * 30 }, .5 + i * .22)
-        .fromTo(im, { y: -window.innerHeight * .75 }, { y: 0, duration: .75, ease: 'bounce.out' }, '<');
+      const side = i % 2 ? 1 : -1;                         // 左右輪流拋
+      toss(tl, im, {
+        fx: side * (w * .55 + Math.random() * 60),
+        fy: 160 + Math.random() * 60,                      // 從畫面下方拋上來
+        lift: 170 + Math.random() * 70,
+        dur: .85 + Math.random() * .15,
+        at: .55 + i * .28,
+        spin: side * -(120 + Math.random() * 120),
+        vessel: v,
+      });
     });
-    tl.to(v, { rotation: 4, duration: .08, yoyo: true, repeat: 5, transformOrigin: '40% 80%' }, '+=.1')
+    tl.to(v, { rotation: 3, duration: .1, yoyo: true, repeat: 3, transformOrigin: '40% 80%' }, '+=.35')
       .add(() => steam(el, 45, 40), '<')
       .to({}, { duration: 1.2 });
     finish(el, tl, resolve);
@@ -89,7 +116,7 @@ export function pourToBowl(order) {
 
     const list = pieces(order.items);
     const inStrainer = list.map((id, i) => {
-      const im = foodImg(id, slot(st.rim, i, list.length));
+      const im = foodImg(img(id), slot(st.rim, i, list.length));
       st.food.appendChild(im);
       return im;
     });
@@ -101,28 +128,32 @@ export function pourToBowl(order) {
       .add(() => drips(el, st))
       .to(st, { rotation: -115, x: -bw * 0.28, y: 10, duration: .7, ease: 'power2.inOut', transformOrigin: '36% 52%' })
       .add(() => {
-        // 食材從麵切開口改放到碗公裡，往下落
+        // 食材從麵切開口滑出，沿拋物線落進碗公
         const sr = st.getBoundingClientRect();
         const br = bowl.getBoundingClientRect();
-        const mx = ((sr.left + sr.width * .25 - br.left) / br.width) * 100;
-        const my = ((sr.top + sr.height * .55 - br.top) / br.height) * 100;
+        const mx = sr.left + sr.width * .25, my = sr.top + sr.height * .55;
         inStrainer.forEach(im => im.remove());
         const t2 = gsap.timeline();
         list.forEach((id, i) => {
           const p = slot(bowl.rim, i, list.length);
-          p.size *= .55;
-          const im = foodImg(id, p);
+          p.size *= .6;
+          const im = foodImg(img(id), p);
+          gsap.set(im, { opacity: 0 });
           bowl.food.appendChild(im);
-          const dx = ((mx - p.x) / 100) * br.width;
-          const dy = ((my - p.y) / 100) * br.height;
-          t2.fromTo(im, { x: dx, y: dy, rotation: (Math.random() - .5) * 180 },
-            { x: 0, y: 0, rotation: (Math.random() - .5) * 30, duration: .55, ease: 'bounce.out' }, i * .07);
+          const tx = br.left + br.width * p.x / 100, ty = br.top + br.height * p.y / 100;
+          toss(t2, im, {
+            fx: mx - tx + (Math.random() - .5) * 20, fy: my - ty,
+            lift: 30 + Math.random() * 30,                 // 倒出時只往上帶一點點
+            dur: .6 + Math.random() * .1, at: i * .09,
+            spin: (Math.random() - .5) * 160,
+          });
         });
+        t2.to(bowl, { y: '+=6', duration: .1, yoyo: true, repeat: 1 }, .5);
       })
-      .to({}, { duration: .4 + list.length * .07 })
+      .to({}, { duration: .8 + list.length * .09 })
       .to(st, { x: 400, opacity: 0, duration: .5, ease: 'power2.in' });
 
-    toppings(tl, el, bowl, order.toppings);
+    toppings(tl, bowl, order.toppings);
     tl.add(() => { steam(el, 46, 50); sparkle(el, bowl); el.querySelector('.cap').textContent = `${order.no} 號 請取餐 🎉`; })
       .to({}, { duration: 2.2 });
     finish(el, tl, resolve);
@@ -140,29 +171,30 @@ function drips(el, st) {
   }
 }
 
-function toppings(tl, el, bowl, tp) {
+function toppings(tl, bowl, tp) {
   const R = bowl.rim;
   if (tp.pickles) {
     tl.add(() => {
-      const im = foodImg('', { x: R.cx + 14, y: R.cy - 6, size: 26 });
-      im.src = 'assets/props/pickles.webp'; // 酸菜不是菜單品項，換成配料圖
+      const im = foodImg('assets/props/pickles.webp', { x: R.cx + 14, y: R.cy - 2, size: 26 });
       bowl.food.appendChild(im);
-      gsap.from(im, { y: -400, duration: .6, ease: 'bounce.out' });
-    }).to({}, { duration: .5 });
+      gsap.from(im, { y: -400, duration: .7, ease: 'bounce.out' });
+    }).to({}, { duration: .6 });
   }
   if (tp.scallion) {
     tl.add(() => sprinkle(bowl, 'scallion', 26, R)).to({}, { duration: .8 });
   }
   if (tp.spice > 0) {
+    // 辣粉罐掛在碗公元素裡，位置跟著碗走（不用量螢幕座標）
     const jar = document.createElement('img');
     jar.src = 'assets/props/chili.webp';
-    const br = bowl.getBoundingClientRect();
-    Object.assign(jar.style, { position: 'absolute', width: '110px', left: br.left + br.width * .5 - 55 + 'px', top: br.top - 150 + 'px', transform: 'rotate(170deg)' });
-    tl.add(() => el.appendChild(jar))
-      .from(jar, { y: -300, duration: .4, ease: 'power2.out' });
+    jar.className = 'jar';
+    bowl.appendChild(jar);
+    gsap.set(jar, { opacity: 0, rotation: 150 });
+    tl.set(jar, { opacity: 1 })
+      .from(jar, { y: -300, duration: .45, ease: 'power2.out' });
     for (let i = 0; i < tp.spice; i++) {
-      tl.to(jar, { y: -30, duration: .12, ease: 'power1.out' })
-        .to(jar, { y: 0, duration: .12, ease: 'power1.in', onComplete: () => sprinkle(bowl, 'chili', 18, R) });
+      tl.to(jar, { y: -26, rotation: 140, duration: .13, ease: 'power1.out' })
+        .to(jar, { y: 0, rotation: 155, duration: .13, ease: 'power1.in', onComplete: () => sprinkle(bowl, 'chili', 18, R) });
     }
     tl.to(jar, { y: -400, opacity: 0, duration: .4 }, '+=.3');
   }
@@ -173,8 +205,8 @@ function sprinkle(bowl, kind, n, R) {
     const b = document.createElement('i');
     b.className = `bit ${kind}`;
     const x = R.cx + (Math.random() - .5) * R.rx * 1.2;
-    const y = R.cy - R.ry * (.2 + Math.random() * 1.4);
-    Object.assign(b.style, { left: x + '%', top: y + '%' });
+    const y = R.cy - R.ry * (Math.random() * 1.2);
+    Object.assign(b.style, { left: x + '%', top: y + '%', zIndex: 2000 });
     bowl.food.appendChild(b);
     gsap.from(b, { y: -260 - Math.random() * 60, x: (Math.random() - .5) * 40, duration: .5 + Math.random() * .3, ease: 'power2.in' });
   }

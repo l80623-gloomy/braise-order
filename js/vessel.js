@@ -26,14 +26,15 @@ export function makeVessel(kind) {
   return el;
 }
 
-// 第 i 個食材在容器裡的落點（百分比），由中間往外、由下往上堆
+// 第 i 個食材在容器裡的落點（百分比）：先填底層、再往上堆
+// 底層的中心壓在碗緣線以下，下半截被前層碗壁擋住，看起來是「沉在裡面」
 export function slot(rim, i, n) {
-  const ring = Math.floor(i / 5);
-  const k = i % 5;
-  const spread = [0, -0.55, 0.55, -0.28, 0.28][k];
+  const layer = Math.floor(i / 4);
+  const k = i % 4;
+  const spread = [-0.45, 0.45, -0.12, 0.2][k] + (layer % 2 ? 0.18 : 0);
   return {
-    x: rim.cx + rim.rx * spread * 0.95,
-    y: rim.cy - rim.ry * (0.25 + ring * 0.7) + (k === 0 ? 0 : rim.ry * 0.25),
-    size: rim.rx * (n > 8 ? 0.62 : 0.78),
+    x: rim.cx + rim.rx * spread * 0.85,
+    y: rim.cy + rim.ry * (0.55 - layer * 0.55) - (k > 1 ? rim.ry * 0.35 : 0),
+    size: rim.rx * (n > 8 ? 0.66 : 0.8),
   };
 }

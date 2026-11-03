@@ -1,0 +1,20 @@
+# 套件與建置產出
+node_modules/
+dist/
+.vite/
+
+# 環境變數（金鑰不要上傳）
+.env
+.env.*
+!.env.example
+
+# 記錄檔
+*.log
+npm-debug.log*
+
+# 編輯器與系統
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+desktop.ini

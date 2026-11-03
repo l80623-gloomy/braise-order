@@ -1,0 +1,6 @@
+# 文字檔一律以 LF 換行存進倉庫，避免 Windows 換行造成假修改
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.webp binary

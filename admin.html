@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>醇滷味接單</title>
+  <meta name="theme-color" content="#3a2316">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="admin">
+    <header>
+      <h1>醇滷味・接單看板 <small id="conn" style="font-size:13px;color:var(--cream)">⚪ 連線中</small></h1>
+      <div class="qr"><div id="qr"></div>客人掃碼點餐</div>
+    </header>
+    <div class="board">
+      <section class="col"><h2>🔔 新訂單 <span id="n-new">0</span></h2><div id="c-new"></div></section>
+      <section class="col"><h2>🔥 製作中 <span id="n-cooking">0</span></h2><div id="c-cooking"></div></section>
+      <section class="col"><h2>✅ 已完成 <span id="n-done">0</span></h2><div id="c-done"></div></section>
+    </div>
+  </div>
+  <div class="start" id="start">
+    <div>
+      <p style="font-size:20px">按下開始接單<br><small>（啟用新訂單提示音）</small></p>
+      <button class="btn" id="startBtn">開始接單</button>
+    </div>
+  </div>
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>

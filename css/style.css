@@ -164,7 +164,9 @@ button { font-family: inherit; cursor: pointer; }
 .stage .skip { position: absolute; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); padding: 8px 14px; font-size: 14px; }
 .vessel { position: absolute; aspect-ratio: 1; }
 .vessel img { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.v-food { position: absolute; inset: 0; }
+/* 食材層自成一組（z-index:1），裡面再怎麼排前後，都在前層碗壁／網子（z-index:2）後面 */
+.v-food { position: absolute; inset: 0; z-index: 1; }
+.vessel .v-front { z-index: 2; }
 .vessel .jar { position: absolute; inset: auto; left: 37%; top: -46%; width: 27%; height: auto; z-index: 3; }
 .v-food img, .v-food i { position: absolute; }
 .v-food img { width: auto; height: auto; aspect-ratio: 1; }

@@ -31,18 +31,20 @@ function foodImg(src, pos) {
   return im;
 }
 
-// 拋物線：水平等速、垂直受重力（二次貝茲曲線），終點是 (0,0)＝落點
+// 拋物線：垂直受重力（二次貝茲曲線），終點是 (0,0)＝落點
 // fx, fy：起點相對落點的位移（px）；lift：頂點比起點／終點中較高者再高多少
-function toss(tl, im, { fx, fy, lift, dur, at, spin, vessel }) {
+// aimFirst：水平移動提早完成，最後一段近乎垂直落下（丟進網籃時不會斜穿網壁）
+function toss(tl, im, { fx, fy, lift, dur, at, spin, vessel, aimFirst }) {
   const apex = Math.min(fy, 0) - lift;
-  const r0 = spin, r1 = (Math.random() - .5) * 24;
+  const r0 = spin, r1 = (Math.random() - .5) * 16;
   const p = { t: 0 };
   tl.set(im, { opacity: 1 }, at);
   tl.to(p, {
     t: 1, duration: dur, ease: 'none',
     onUpdate() {
       const t = p.t, u = 1 - t;
-      gsap.set(im, { x: fx * u, y: u * u * fy + 2 * u * t * apex, rotation: r0 * u + r1 * t });
+      const ux = aimFirst ? Math.max(0, 1 - t / .7) ** 2 : u;
+      gsap.set(im, { x: fx * ux, y: u * u * fy + 2 * u * t * apex, rotation: r0 * ux + r1 * (1 - ux) });
     },
   }, at);
   // 落地：壓扁再彈回，容器跟著輕輕一沉
@@ -93,6 +95,7 @@ export function dropToStrainer(items) {
         at: .55 + i * .28,
         spin: side * -(120 + Math.random() * 120),
         vessel: v,
+        aimFirst: true,
       });
     });
     tl.to(v, { rotation: 3, duration: .1, yoyo: true, repeat: 3, transformOrigin: '40% 80%' }, '+=.35')

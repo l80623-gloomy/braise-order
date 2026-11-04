@@ -24,17 +24,9 @@ export function makeVessel(kind) {
   el.className = `vessel vessel-${kind}`;
   el.innerHTML = `<img class="v-back" src="${r.src}" alt=""><div class="v-food"></div><img class="v-front" src="${r.front || r.src}" alt="">`;
   el.querySelector('.v-front').style.clipPath = frontClip(r);
-  if (r.body) el.querySelector('.v-food').style.clipPath = bodyClip(r);
   el.rim = r;
   el.food = el.querySelector('.v-food');
   return el;
-}
-
-// 食材層裁成「碗口以上全開＋碗口以下只限網籃內壁」，沉到底的食材不會穿出網籃外
-function bodyClip({ cy, body }) {
-  const right = body.map(([y, , r]) => `${r}% ${y}%`);
-  const left = body.map(([y, l]) => `${l}% ${y}%`).reverse();
-  return `polygon(0% 0%, 100% 0%, 100% ${cy}%, ${right.join(',')}, ${left.join(',')}, 0% ${cy}%)`;
 }
 
 // 某高度的內壁左右位置（線性內插）；碗口以上沿用碗口寬
@@ -49,6 +41,7 @@ function wallsAt(body, y) {
 }
 
 // 有 body 的容器：從底部一排排往上堆，每排放得下幾塊就放幾塊
+// 每塊都整塊落在內壁以內（左右各留半塊＋一點邊距），不靠裁切，邊緣才不會被切出直線
 function pile(rim, n) {
   const size = rim.rx * (n > 8 ? 0.66 : 0.8);
   const bottom = rim.body[rim.body.length - 1][0];
@@ -56,12 +49,13 @@ function pile(rim, n) {
   let y = bottom - size * 0.42, row = 0;
   while (out.length < n) {
     const [l, r] = wallsAt(rim.body, y);
-    const span = r - l - size * 0.7;
-    const cap = Math.max(1, Math.floor(span / (size * 0.72)) + 1);
+    const span = Math.max(0, r - l - size * 0.9);
+    const cap = Math.floor(span / (size * 0.72)) + 1;
     const k = Math.min(cap, n - out.length);
+    const jog = row % 2 ? 1 : -1;
     for (let j = 0; j < k; j++) {
-      const x = k === 1 ? (l + r) / 2 : l + size * 0.35 + (span * j) / (k - 1);
-      out.push({ x: x + (row % 2 ? 2 : -2), y: y - (j % 2) * 1.5, size });
+      const x = k === 1 ? (l + r) / 2 + jog * Math.min(2, span / 2) : l + size * 0.45 + (span * j) / (k - 1);
+      out.push({ x, y: y - (j % 2) * 1.5, size });
     }
     y -= size * 0.62; row++;
   }

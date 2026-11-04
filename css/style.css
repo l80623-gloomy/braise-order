@@ -32,6 +32,51 @@ button { font-family: inherit; cursor: pointer; }
 .sign img { width: 64px; height: 64px; filter: drop-shadow(0 3px 4px rgba(0,0,0,.4)); }
 .sign h1 { margin: 0; font-size: 30px; letter-spacing: 4px; color: #ffd98a; text-shadow: 2px 2px 0 var(--red), 0 0 12px rgba(255,180,80,.4); }
 .sign p { margin: 2px 0 0; font-size: 13px; opacity: .8; letter-spacing: 2px; }
+.sign > div { flex: 1; min-width: 0; }
+.me {
+  flex: none; max-width: 42%; border: 0; border-radius: 14px; padding: 4px 8px; background: rgba(255,255,255,.1);
+  color: var(--cream); display: flex; flex-direction: column; align-items: center; font-size: 13px; line-height: 1.2;
+  box-shadow: inset 0 0 0 2px rgba(255,217,138,.5);
+}
+.me img { width: 40px; height: 40px; }
+.me span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.me small { opacity: .7; font-size: 11px; }
+
+/* ── 登入（認識一下） ── */
+.login { position: fixed; inset: 0; z-index: 75; overflow-y: auto; background: rgba(30, 16, 8, .96); padding: 16px; }
+.login-card { max-width: 460px; margin: 0 auto; background: var(--cream); color: var(--ink); border-radius: 22px; padding: 18px 16px 20px; box-shadow: var(--shadow); }
+.login-hero { display: block; width: 90px; margin: -6px auto 4px; }
+.login-card h2 { margin: 0 0 10px; text-align: center; font-size: 21px; }
+.login-card label { display: block; margin: 14px 0 6px; font-weight: 700; color: #8a4b1c; }
+.login-card input {
+  width: 100%; border: 2px solid #e6d2ae; border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 18px; color: var(--ink); background: #fff;
+}
+.login-card input:focus { outline: none; border-color: var(--orange); }
+.name-row { display: flex; gap: 8px; }
+.name-row input { width: 76px; flex: none; text-align: center; }
+.seg { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.seg button { border: 0; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 2px #e6d2ae; font-size: 16px; color: var(--ink); }
+.seg button.on { background: var(--orange); color: #fff; box-shadow: 0 3px 0 #a84d16; }
+.login-card .link { margin-top: 6px; border: 0; background: none; color: #a84d16; text-decoration: underline; font-size: 14px; padding: 0; }
+.av-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; max-height: 196px; overflow-y: auto; padding: 4px; background: #f6e8cc; border-radius: 12px; }
+.av-grid button { border: 0; border-radius: 12px; background: #fff; padding: 3px; aspect-ratio: 1; }
+.av-grid button img { width: 100%; height: 100%; object-fit: contain; }
+.av-grid button.on { box-shadow: 0 0 0 3px var(--orange); background: #fff1e3; }
+.call-preview { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 14px; background: #fff3b8; }
+.call-preview img { width: 56px; height: 56px; }
+.call-preview b { display: block; font-size: 22px; color: var(--red); }
+.login-card .err { min-height: 1.2em; margin: 8px 0 0; color: var(--red); font-size: 14px; text-align: center; }
+.login-card .btn { display: block; width: 100%; margin-top: 8px; }
+.login-card .privacy { margin: 12px 0 0; font-size: 12px; color: #8b6e52; line-height: 1.5; }
+
+/* 叫號稱呼（客人票卡、業者卡片） */
+.who { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 4px 0 6px; font-size: 20px; font-weight: 700; color: var(--ink); }
+.who img { width: 40px; height: 40px; }
+.card .who { justify-content: flex-start; flex-wrap: wrap; font-size: 22px; margin: 2px 0 6px; }
+.card .who small { margin-left: auto; font-size: 14px; font-weight: 400; color: #8b6e52; }
+.card .who small b { font-size: 18px; color: var(--ink); letter-spacing: 2px; }
+.auto-call { font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.auto-call input { width: 18px; height: 18px; }
 
 /* ── 分類籤 ── */
 .tabs {
@@ -209,7 +254,7 @@ button { font-family: inherit; cursor: pointer; }
   background: radial-gradient(circle at 50% 60%, #6b4026, var(--wood) 70%);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
-.stage .cap { position: absolute; top: 12%; width: 100%; text-align: center; font-size: 26px; color: #ffd98a; text-shadow: 2px 2px 0 var(--red); letter-spacing: 3px; }
+.stage .cap { position: absolute; top: 12%; width: 100%; padding: 0 16px; line-height: 1.4; text-align: center; font-size: 26px; color: #ffd98a; text-shadow: 2px 2px 0 var(--red); letter-spacing: 3px; }
 .stage .skip { position: absolute; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); padding: 8px 14px; font-size: 14px; }
 .vessel { position: absolute; aspect-ratio: 1; }
 .vessel img { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -254,7 +299,7 @@ button { font-family: inherit; cursor: pointer; }
 .bob { width: 150px; margin: 12px auto 0; display: block; }
 .paybadge { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 13px; color: #fff; }
 .paybadge.paid { background: var(--green); } .paybadge.unpaid { background: var(--red); }
-.conn { position: fixed; top: 8px; right: 10px; z-index: 60; font-size: 12px; opacity: .75; }
+.conn { position: fixed; top: 4px; left: 50%; transform: translateX(-50%); z-index: 60; font-size: 11px; opacity: .6; white-space: nowrap; }
 
 /* ── 業者端 ── */
 .admin { padding: 12px 12px 40px; }

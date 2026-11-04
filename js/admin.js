@@ -1,6 +1,6 @@
 // 業者端：新訂單 → 設定分鐘（製作中）→ 完成訂單
 import { ITEMS, SPICE, img } from './menu.js';
-import { send, listen, reduce, due, esc } from './bus.js';
+import { send, listen, reduce, due, esc, callName } from './bus.js';
 
 const $ = s => document.querySelector(s);
 let orders = {};
@@ -13,6 +13,8 @@ new window.QRCode($('#qr'), { text: customerUrl, width: 192, height: 192 });
 
 $('#startBtn').onclick = () => {
   audio = new (window.AudioContext || window.webkitAudioContext)();
+  // iPad／手機要在點擊當下先「講」一次，之後才准自動語音叫號
+  if ('speechSynthesis' in window) speechSynthesis.speak(new SpeechSynthesisUtterance(''));
   $('#start').remove();
 };
 
@@ -64,11 +66,14 @@ function card(o) {
     acts = `<button class="btn green" data-a="done">完成訂單</button>`;
   } else {
     eta = `<div class="eta">完成於 ${hhmm(o.doneAt)}</div>`;
+    acts = `<button class="btn ghost dark" data-a="call">🔊 再叫一次</button>`;
   }
   if (due(o) > 0) acts += `<button class="btn blue" data-a="paid">收到現金</button>`;
   const n = o.bowls.length;
+  const c = o.customer;
   return `<div class="card ${fresh.has(o.id) ? 'fresh' : ''}" data-id="${esc(o.id)}">
     <div class="hd"><b>${esc(o.no)}</b><span class="tm">${hhmm(o.ts)} 下單${n > 1 ? `・<strong>${n} 碗</strong>` : ''}</span><b style="font-size:20px;color:var(--ink)">$${o.total}</b></div>
+    ${c ? `<div class="who">${c.avatar ? `<img src="${img(c.avatar)}" alt="">` : ''}<span>${esc(callName(c))}</span>${c.tail ? `<small>電話末三碼 <b>${c.tail}</b></small>` : ''}</div>` : ''}
     <div>${payTag(o)}${o.edited ? `<span class="paybadge edited">✏️ 客人已修改 ${hhmm(o.editedAt)}</span>` : ''}</div>
     ${o.bowls.map((b, i) => bowlHtml(b, i, n)).join('')}
     ${eta}
@@ -99,11 +104,28 @@ document.querySelector('.board').onclick = async e => {
     if (!(m > 0)) return;
     ev = { type: 'eta', id, minutes: m };
   }
+  if (a === 'call') { announce(orders[id]); return; }
   if (a === 'done') ev = { type: 'done', id };
   if (a === 'paid') ev = { type: 'paid', id };
   b.disabled = true;
-  if (!(await send(ev))) { alert('網路不穩，請再按一次'); b.disabled = false; }
+  if (!(await send(ev))) { alert('網路不穩，請再按一次'); b.disabled = false; return; }
+  if (a === 'done' && $('#autoCall').checked) announce(orders[id]);
 };
+
+/* ── 語音叫號：「二一四號，鳥蛋陳小姐，您的滷味好囉！」 ── */
+const DIGIT = '零一二三四五六七八九';
+function announce(o) {
+  if (!o || !('speechSynthesis' in window)) return;
+  const no = String(o.no).split('').map(d => DIGIT[d] ?? d).join('');
+  const who = callName(o.customer);
+  const u = new SpeechSynthesisUtterance(`${no}號，${who ? who + '，' : ''}您的滷味好囉！`);
+  u.lang = 'zh-TW';
+  u.rate = .95;
+  const v = speechSynthesis.getVoices().find(x => x.lang === 'zh-TW') || speechSynthesis.getVoices().find(x => x.lang.startsWith('zh'));
+  if (v) u.voice = v;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
 
 listen(e => {
   const isNew = e.type === 'order' && !orders[e.id];

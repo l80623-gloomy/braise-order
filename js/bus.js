@@ -57,6 +57,19 @@ function cleanBowls(e) {
 
 export const bowlsTotal = bowls => bowls.reduce((s, b) => s + total(b.items), 0);
 
+// 客人身分：稱呼、Q 版頭像（菜單品項 id）、電話末三碼（測試期公開頻道只傳末三碼）
+function cleanCustomer(c) {
+  if (!c || typeof c !== 'object') return null;
+  return {
+    name: String(c.name || '').slice(0, 8),
+    avatar: ITEMS[c.avatar] ? c.avatar : '',
+    tail: /^\d{3}$/.test(c.tail) ? c.tail : '',
+  };
+}
+
+// 叫號用的稱呼：頭像品名＋稱呼，例如「鳥蛋陳小姐」
+export const callName = c => (c ? `${c.avatar ? ITEMS[c.avatar].name : ''}${c.name}` : '');
+
 // 由事件重建所有訂單狀態
 export function reduce(orders, e) {
   if (!e || typeof e.id !== 'string') return orders;
@@ -67,7 +80,7 @@ export function reduce(orders, e) {
     const t = bowlsTotal(bowls);
     orders[e.id] = {
       id: e.id, no: String(e.no || '').slice(0, 4), ts: e.ts, pay: e.pay === 'online' ? 'online' : 'cash',
-      payMethod: String(e.payMethod || '').slice(0, 12), bowls, total: t,
+      payMethod: String(e.payMethod || '').slice(0, 12), bowls, total: t, customer: cleanCustomer(e.customer),
       paidAmount: e.paid ? t : 0, status: 'new', eta: null, etaAt: null, rev: 0,
     };
   } else if (o) {

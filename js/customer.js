@@ -2,8 +2,9 @@
 // 一張單可以有好幾碗（同一個取餐號碼、一次結帳）；也可以另開一張單「再點一碗」
 // 店家接單（設定分鐘）之前，客人可以修改訂單
 import { CATEGORIES, ITEMS, SPICE, PAY, img, total } from './menu.js';
-import { send, listen, reduce, bowlsTotal, due, esc } from './bus.js';
+import { send, listen, reduce, bowlsTotal, due, esc, callName } from './bus.js';
 import { dropToStrainer, pourToBowl } from './anim.js';
+import { loadProfile, openProfile, customerOf } from './profile.js';
 
 const $ = s => document.querySelector(s);
 const gsap = window.gsap;
@@ -19,6 +20,19 @@ let pay = 'cash';
 let orders = {};
 let myIds = load(KEY);
 let seen = load(SEEN);
+let profile = loadProfile();
+
+// 招牌右邊的「我」：頭像＋叫號稱呼，點了可以改資料
+function renderMe() {
+  const b = $('#meBtn');
+  b.classList.toggle('hidden', !profile);
+  if (!profile) return;
+  const c = customerOf(profile);
+  b.innerHTML = `<img src="${img(c.avatar)}" alt=""><span>${esc(callName(c))}</span><small>修改</small>`;
+}
+function editProfile(then) {
+  openProfile(p => { profile = p; renderMe(); if (then) then(); }, profile);
+}
 
 const bowl = () => draft.bowls[draft.cur];
 const pairs = items => Object.entries(items).filter(([, q]) => q > 0);
@@ -247,12 +261,14 @@ async function sendOrFail(ev, retry) {
 }
 
 async function submitOrder(paid, method = '') {
+  if (!profile) { closeSheet(); editProfile(() => submitOrder(paid, method)); return; }
   const bowls = draftBowls();
   const order = {
     type: 'order',
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     no: String(100 + Math.floor(Math.random() * 900)),
     bowls, pay, payMethod: method, paid,
+    customer: customerOf(profile),
   };
   if (!(await sendOrFail(order, () => submitOrder(paid, method)))) return;
   closeSheet();
@@ -330,6 +346,7 @@ function ticket(o) {
   return `
     <div class="ticket ${done ? 'done' : ''}">
       <div class="no">取餐號碼<b>${esc(o.no)}</b>${many ? `<span class="nb">共 ${o.bowls.length} 碗</span>` : ''}</div>
+      ${o.customer ? `<div class="who">${o.customer.avatar ? `<img src="${img(o.customer.avatar)}" alt="">` : ''}${esc(callName(o.customer))}</div>` : ''}
       ${payBadge(o)}
       <div class="status">${status}</div>
       ${ring}
@@ -417,7 +434,7 @@ function checkDone() {
     if (o && o.status === 'done' && !seen.includes(id)) {
       seen.push(id);
       const n = o.bowls.length;
-      o.bowls.forEach((b, i) => queue.push({ no: o.no, items: b.items, toppings: b.toppings, label: n > 1 ? `第 ${i + 1}/${n} 碗` : '' }));
+      o.bowls.forEach((b, i) => queue.push({ no: o.no, call: callName(o.customer), items: b.items, toppings: b.toppings, label: n > 1 ? `第 ${i + 1}/${n} 碗` : '' }));
     }
   }
   save();
@@ -443,6 +460,9 @@ function onEvent(e) {
 
 renderWall();
 refresh();
+renderMe();
+$('#meBtn').onclick = () => editProfile();
+if (!profile) editProfile();          // 第一次來：先認識一下
 listen(onEvent, ok => { $('#conn').textContent = ok ? '🟢 已連線' : '🔴 重新連線中'; });
 
 // 重新打開網頁：等歷史事件重播完，接回自己的訂單（已過期的訂單自動清掉）

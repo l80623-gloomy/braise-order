@@ -1,24 +1,29 @@
 // 客人端：竹牌點餐 → 配料／付款 → 投入麵切 → 等候 → 倒入碗公
+// 一位客人可以點好幾碗，每碗各自一個取餐號碼、各自播倒入碗公動畫
 import { CATEGORIES, ITEMS, SPICE, PAY, img, total } from './menu.js';
 import { send, listen, reduce } from './bus.js';
 import { dropToStrainer, pourToBowl } from './anim.js';
 
 const $ = s => document.querySelector(s);
 const gsap = window.gsap;
-const KEY = 'braise.myOrder';
-const SEEN = 'braise.seenDone';
+const KEY = 'braise.myOrders';         // 我的訂單 id 陣列
+const SEEN = 'braise.seenDone';        // 已播過倒入動畫的訂單 id 陣列
 
 const cart = {};                       // id → 數量
 const tp = { spice: 0, scallion: false, pickles: false };
 let pay = 'cash';
 let orders = {};
-let myId = store(KEY);
+let myIds = load(KEY);
+let seen = load(SEEN);
 
-function store(k, v) {
+function load(k) {
+  try { return JSON.parse(localStorage.getItem(k)) || []; } catch (e) { return []; }
+}
+function save() {
   try {
-    if (v === undefined) return localStorage.getItem(k);
-    if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v);
-  } catch (e) { return null; }
+    localStorage.setItem(KEY, JSON.stringify(myIds));
+    localStorage.setItem(SEEN, JSON.stringify(seen.filter(id => myIds.includes(id))));
+  } catch (e) { /* 無痕模式等情況存不了，不影響本次使用 */ }
 }
 
 /* ── 竹牌牆 ── */
@@ -51,11 +56,14 @@ function renderWall() {
 
   $('#wall').onclick = e => {
     const s = e.target.closest('.slat'); if (!s) return;
-    cart[s.dataset.id] = (cart[s.dataset.id] || 0) + 1;
-    gsap.fromTo(s, { rotation: -7 }, { rotation: 0, duration: .9, ease: 'elastic.out(1.2, .3)' });
+    const id = s.dataset.id;
+    const minus = e.target.closest('.minus');
+    cart[id] = Math.max(0, (cart[id] || 0) + (minus ? -1 : 1));
+    gsap.fromTo(s, { rotation: minus ? 7 : -7 }, { rotation: 0, duration: .9, ease: 'elastic.out(1.2, .3)' });
     refresh();
   };
   $('#goBtn').onclick = openSheet;
+  $('#myBtn').onclick = showWait;
 }
 
 function cartItems() { return Object.entries(cart).filter(([, q]) => q > 0); }
@@ -65,13 +73,30 @@ function refresh() {
     const q = cart[s.dataset.id] || 0;
     s.classList.toggle('picked', q > 0);
     let k = s.querySelector('.knot');
-    if (q && !k) { k = document.createElement('span'); k.className = 'knot'; s.appendChild(k); }
-    if (k) q ? (k.textContent = q) : k.remove();
+    if (q && !k) {
+      k = document.createElement('span'); k.className = 'knot'; s.appendChild(k);
+      const m = document.createElement('span'); m.className = 'minus'; m.textContent = '−'; m.setAttribute('aria-label', '減少一份'); s.appendChild(m);
+    }
+    if (k) {
+      if (q) k.textContent = q;
+      else { k.remove(); s.querySelector('.minus')?.remove(); }
+    }
   });
   const items = cartItems();
   $('#cnt').textContent = items.reduce((s, [, q]) => s + q, 0);
   $('#tot').textContent = total(items);
   $('#goBtn').disabled = !items.length;
+  refreshMyBtn();
+}
+
+// 竹牌頁上方的「我的訂單」按鈕：有訂單才出現，有好了的會變綠色
+function refreshMyBtn() {
+  const mine = myIds.map(id => orders[id]).filter(Boolean);
+  const b = $('#myBtn');
+  b.classList.toggle('hidden', !mine.length);
+  const ready = mine.filter(o => o.status === 'done').length;
+  b.classList.toggle('ready', ready > 0);
+  b.textContent = ready ? `🍜 ${ready} 碗好了，去取餐` : `🧾 我的訂單（${mine.length}）`;
 }
 
 /* ── 確認面板：品項、配料、付款 ── */
@@ -161,91 +186,146 @@ async function submit(paid, method = '') {
     return;
   }
   closeSheet();
-  myId = order.id;
-  store(KEY, myId);
-  store(SEEN, null);
+  myIds.push(order.id);
+  save();
   orders[order.id] = orders[order.id] || { ...order, status: 'new' };
   await dropToStrainer(items);
+  // 清空購物籃與配料，下一碗從頭選
   Object.keys(cart).forEach(k => delete cart[k]);
+  Object.assign(tp, { spice: 0, scallion: false, pickles: false });
   refresh();
   showWait();
 }
 
-/* ── 等候畫面 ── */
+/* ── 等候畫面：列出我的每一碗 ── */
 let tick;
-function showWait() {
-  const o = orders[myId];
-  if (!o) return;
-  $('#menuView').classList.add('hidden');
-  $('#waitView').classList.remove('hidden');
-  clearInterval(tick);
-  const draw = () => {
-    const o = orders[myId];
-    let status = '店家收到訂單，正在安排時間…';
-    let ring = '';
-    if (o.status === 'cooking' && o.etaAt) {
-      const left = Math.max(0, o.etaAt - Date.now());
-      const frac = o.eta ? left / (o.eta * 60000) : 0;
-      const m = Math.floor(left / 60000), s = Math.floor(left / 1000) % 60;
-      status = left ? `滷味煮製中，約 ${o.eta} 分鐘` : '快好了，再等一下下～';
-      const C = 2 * Math.PI * 64;
-      ring = `<div class="ring"><svg width="150" height="150"><circle cx="75" cy="75" r="64" stroke="#f0dcb6" stroke-width="12" fill="none"/>
-        <circle cx="75" cy="75" r="64" stroke="#e8742c" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - frac)}"/></svg>
-        <div class="left"><div>${m}:${String(s).padStart(2, '0')}<small>預計剩餘</small></div></div></div>`;
-    }
-    if (o.status === 'done') status = '好了！請到櫃檯取餐';
-    $('#waitView').innerHTML = `
-      <div class="ticket">
-        <div class="no">取餐號碼<b>${o.no}</b></div>
-        <span class="paybadge ${o.paid ? 'paid' : 'unpaid'}">${o.paid ? '已付款' : `現場付現 $${o.total}`}</span>
-        <div class="status">${status}</div>
-        ${ring}
-        <div class="mini">${o.items.map(([id, q]) => `<span>${ITEMS[id].name}×${q}</span>`).join('')}</div>
-        <div class="mini">${[SPICE[o.toppings.spice], o.toppings.scallion && '加蔥', o.toppings.pickles && '加酸菜'].filter(Boolean).map(t => `<span>${t}</span>`).join('')}</div>
-      </div>
-      ${o.status === 'done'
-        ? '<img class="bob" src="assets/props/bowl.webp" alt=""><button class="btn" id="again">取餐完成，再點一份</button>'
-        : '<img class="bob" id="bob" src="assets/props/strainer.webp" alt="">'}`;
-    const again = $('#again');
-    if (again) again.onclick = () => { store(KEY, null); myId = null; clearInterval(tick); $('#waitView').classList.add('hidden'); $('#menuView').classList.remove('hidden'); };
-  };
-  draw();
-  const bob = $('#bob');
-  if (bob) gsap.to(bob, { y: 12, rotation: 3, duration: .9, yoyo: true, repeat: -1, ease: 'sine.inOut' });
-  tick = setInterval(draw, 1000);
+const C = 2 * Math.PI * 52;
+
+function ticket(o) {
+  let status = '店家收到訂單，正在安排時間…';
+  let ring = '';
+  if (o.status === 'cooking' && o.etaAt) {
+    const left = Math.max(0, o.etaAt - Date.now());
+    const frac = o.eta ? left / (o.eta * 60000) : 0;
+    const m = Math.floor(left / 60000), s = Math.floor(left / 1000) % 60;
+    status = left ? `滷味煮製中，約 ${o.eta} 分鐘` : '快好了，再等一下下～';
+    ring = `<div class="ring"><svg width="124" height="124"><circle cx="62" cy="62" r="52" stroke="#f0dcb6" stroke-width="10" fill="none"/>
+      <circle cx="62" cy="62" r="52" stroke="#e8742c" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - frac)}"/></svg>
+      <div class="left"><div>${m}:${String(s).padStart(2, '0')}<small>預計剩餘</small></div></div></div>`;
+  }
+  const done = o.status === 'done';
+  if (done) status = '好了！請到櫃檯取餐';
+  return `
+    <div class="ticket ${done ? 'done' : ''}">
+      <div class="no">取餐號碼<b>${o.no}</b></div>
+      <span class="paybadge ${o.paid ? 'paid' : 'unpaid'}">${o.paid ? '已付款' : `現場付現 $${o.total}`}</span>
+      <div class="status">${status}</div>
+      ${ring}
+      <div class="mini">${o.items.map(([id, q]) => `<span>${ITEMS[id].name}×${q}</span>`).join('')}</div>
+      <div class="mini">${[SPICE[o.toppings.spice], o.toppings.scallion && '加蔥', o.toppings.pickles && '加酸菜'].filter(Boolean).map(t => `<span>${t}</span>`).join('')}</div>
+      ${done ? `<button class="btn green" data-pick="${o.id}">已取餐</button>` : ''}
+    </div>`;
 }
 
-/* ── 收訊息 ── */
+function drawWait() {
+  const mine = myIds.map(id => orders[id]).filter(Boolean).reverse();
+  if (!mine.length) { showMenu(); return; }
+  const cooking = mine.some(o => o.status !== 'done');
+  $('#waitView').innerHTML = `
+    <div class="wait-top">
+      <button class="btn" id="againBtn">＋ 再點一碗</button>
+    </div>
+    ${mine.map(ticket).join('')}
+    ${cooking ? '<img class="bob" id="bob" src="assets/props/strainer.webp" alt="">' : ''}`;
+  $('#againBtn').onclick = showMenu;
+  $('#waitView').querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
+    myIds = myIds.filter(id => id !== b.dataset.pick);
+    save();
+    drawWait();
+  });
+  const bob = $('#bob');
+  if (bob) gsap.to(bob, { y: 12, rotation: 3, duration: .9, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+}
+
+function showWait() {
+  if (!myIds.some(id => orders[id])) return;
+  $('#menuView').classList.add('hidden');
+  $('#waitView').classList.remove('hidden');
+  window.scrollTo(0, 0);
+  drawWait();
+  clearInterval(tick);
+  // 每秒只更新倒數數字與圓環，不整頁重畫（避免浮動的麵切動畫一直重來）
+  tick = setInterval(() => {
+    const mine = myIds.map(id => orders[id]).filter(Boolean).reverse();
+    const els = $('#waitView').querySelectorAll('.ticket');
+    if (els.length !== mine.length) return drawWait();
+    mine.forEach((o, i) => {
+      const old = els[i];
+      const tmp = document.createElement('div');
+      tmp.innerHTML = ticket(o);
+      if (old.innerHTML !== tmp.firstElementChild.innerHTML) old.replaceWith(tmp.firstElementChild);
+    });
+    $('#waitView').querySelectorAll('[data-pick]').forEach(b => b.onclick = () => {
+      myIds = myIds.filter(id => id !== b.dataset.pick);
+      save();
+      drawWait();
+    });
+  }, 1000);
+}
+
+function showMenu() {
+  clearInterval(tick);
+  $('#waitView').classList.add('hidden');
+  $('#menuView').classList.remove('hidden');
+  refresh();
+}
+
+/* ── 收訊息：我的某一碗好了就播倒入碗公（多碗同時好了就依序播） ── */
 let playing = false;
-async function onEvent(e) {
-  const before = orders[myId]?.status;
-  orders = reduce(orders, e);
-  const o = orders[myId];
-  if (!o || $('#waitView').classList.contains('hidden')) return;
-  if (o.status === 'done' && before !== 'done' && store(SEEN) !== myId && !playing) {
-    playing = true;
-    store(SEEN, myId);
+const queue = [];
+
+async function playQueue() {
+  if (playing) return;
+  playing = true;
+  while (queue.length) {
+    const o = orders[queue.shift()];
     clearInterval(tick);
     await pourToBowl(o);
-    playing = false;
-    showWait();
     if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
   }
+  playing = false;
+  showWait();
+}
+
+function checkDone() {
+  for (const id of myIds) {
+    const o = orders[id];
+    if (o && o.status === 'done' && !seen.includes(id)) {
+      seen.push(id);
+      queue.push(id);
+    }
+  }
+  save();
+  if (queue.length) playQueue();
+}
+
+let replayed = false;                  // 歷史事件重播完之前先不判斷
+function onEvent(e) {
+  orders = reduce(orders, e);
+  if (!replayed) return;
+  refreshMyBtn();
+  if (myIds.includes(e.id) && e.type === 'done') checkDone();
 }
 
 renderWall();
 refresh();
 listen(onEvent, ok => { $('#conn').textContent = ok ? '🟢 已連線' : '🔴 重新連線中'; });
 
-// 重新打開網頁：接回自己的訂單（等歷史事件重播完再判斷）
-if (myId) {
-  setTimeout(() => {
-    if (orders[myId]) {
-      if (orders[myId].status === 'done' && store(SEEN) !== myId) {
-        store(SEEN, myId);
-        $('#menuView').classList.add('hidden');
-        pourToBowl(orders[myId]).then(showWait);
-      } else showWait();
-    }
-  }, 1800);
-}
+// 重新打開網頁：等歷史事件重播完，接回自己的訂單（已過期的訂單自動清掉）
+setTimeout(() => {
+  replayed = true;
+  if (Object.keys(orders).length) myIds = myIds.filter(id => orders[id]);   // 有收到歷史才清，避免網路慢時誤刪
+  save();
+  refresh();
+  if (myIds.length) { showWait(); checkDone(); }
+}, 1800);

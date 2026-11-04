@@ -26,7 +26,7 @@ function foodImg(src, pos) {
   im.style.left = pos.x + '%';
   im.style.top = pos.y + '%';
   im.style.width = pos.size + '%';
-  im.style.zIndex = Math.round(pos.y * 10);   // 越靠前（越下方）的蓋在上面
+  im.style.zIndex = 1000 - Math.round(pos.y * 10);   // 堆在上面的蓋住下面的
   gsap.set(im, { xPercent: -50, yPercent: -50 });
   return im;
 }
@@ -86,9 +86,9 @@ export function dropToStrainer(items) {
       v.food.appendChild(im);
       const side = i % 2 ? 1 : -1;                         // 左右輪流拋
       toss(tl, im, {
-        fx: side * (w * .55 + Math.random() * 60),
-        fy: 160 + Math.random() * 60,                      // 從畫面下方拋上來
-        lift: 170 + Math.random() * 70,
+        fx: side * (w * .5 + Math.random() * 50),
+        fy: -(w * .45 + Math.random() * 60),               // 從兩側上方拋進來，落下段夠陡才進得了網籃
+        lift: 90 + Math.random() * 50,
         dur: .85 + Math.random() * .15,
         at: .55 + i * .28,
         spin: side * -(120 + Math.random() * 120),

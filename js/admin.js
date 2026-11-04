@@ -1,6 +1,6 @@
 // 業者端：新訂單 → 設定分鐘（製作中）→ 完成訂單
 import { ITEMS, SPICE, img } from './menu.js';
-import { send, listen, reduce } from './bus.js';
+import { send, listen, reduce, due, esc } from './bus.js';
 
 const $ = s => document.querySelector(s);
 let orders = {};
@@ -29,16 +29,30 @@ function ding() {
 
 const hhmm = ts => new Date(ts).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-function card(o) {
-  const t = o.toppings;
+function bowlHtml(b, i, n) {
+  const t = b.toppings;
   const tags = [
     `<span class="tag ${t.spice ? 'spice' : 'mild'}">🌶 ${SPICE[t.spice]}</span>`,
     t.scallion && '<span class="tag yes">＋蔥花</span>',
     t.pickles && '<span class="tag yes">＋酸菜</span>',
   ].filter(Boolean).join('');
-  const payTag = o.paid
-    ? `<span class="paybadge paid">已付 ${o.payMethod || ''}</span>`
-    : `<span class="paybadge unpaid">現金未收 $${o.total}</span>`;
+  return `<div class="bowl-box">
+    ${n > 1 ? `<div class="bh">🥣 第 ${i + 1} 碗</div>` : ''}
+    <ul>${b.items.map(([id, q]) => `<li><img src="${img(id)}" alt="">${ITEMS[id].name}<b>×${q}</b></li>`).join('')}</ul>
+    <div class="tags">${tags}</div>
+    ${b.note ? `<div class="note">📝 ${esc(b.note)}</div>` : ''}
+  </div>`;
+}
+
+function payTag(o) {
+  const d = due(o);
+  if (o.paidAmount && d < 0) return `<span class="paybadge refund">已付 $${o.paidAmount}・需退 $${-d}</span>`;
+  if (o.paidAmount && d === 0) return `<span class="paybadge paid">已付 ${esc(o.payMethod)}</span>`;
+  if (o.paidAmount) return `<span class="paybadge unpaid">已付 $${o.paidAmount}・尚欠 $${d}</span>`;
+  return `<span class="paybadge unpaid">現金未收 $${o.total}</span>`;
+}
+
+function card(o) {
   let eta = '', acts = '';
   if (o.status === 'new') {
     acts = [5, 10, 15].map(m => `<button class="btn" data-a="eta" data-m="${m}">${m} 分</button>`).join('') +
@@ -51,12 +65,12 @@ function card(o) {
   } else {
     eta = `<div class="eta">完成於 ${hhmm(o.doneAt)}</div>`;
   }
-  if (!o.paid) acts += `<button class="btn blue" data-a="paid">收到現金</button>`;
-  return `<div class="card ${fresh.has(o.id) ? 'fresh' : ''}" data-id="${o.id}">
-    <div class="hd"><b>${o.no}</b><span class="tm">${hhmm(o.ts)} 下單</span><b style="font-size:20px;color:var(--ink)">$${o.total}</b></div>
-    <div>${payTag}</div>
-    <ul>${o.items.map(([id, q]) => `<li><img src="${img(id)}" alt="">${ITEMS[id].name}<b>×${q}</b></li>`).join('')}</ul>
-    <div class="tags">${tags}</div>
+  if (due(o) > 0) acts += `<button class="btn blue" data-a="paid">收到現金</button>`;
+  const n = o.bowls.length;
+  return `<div class="card ${fresh.has(o.id) ? 'fresh' : ''}" data-id="${esc(o.id)}">
+    <div class="hd"><b>${esc(o.no)}</b><span class="tm">${hhmm(o.ts)} 下單${n > 1 ? `・<strong>${n} 碗</strong>` : ''}</span><b style="font-size:20px;color:var(--ink)">$${o.total}</b></div>
+    <div>${payTag(o)}${o.edited ? `<span class="paybadge edited">✏️ 客人已修改 ${hhmm(o.editedAt)}</span>` : ''}</div>
+    ${o.bowls.map((b, i) => bowlHtml(b, i, n)).join('')}
     ${eta}
     <div class="acts">${acts}</div>
   </div>`;
@@ -93,8 +107,10 @@ document.querySelector('.board').onclick = async e => {
 
 listen(e => {
   const isNew = e.type === 'order' && !orders[e.id];
+  const before = orders[e.id]?.rev;
   orders = reduce(orders, e);
-  if (isNew && ready) { fresh.add(e.id); ding(); }
+  const edited = e.type === 'edit' && orders[e.id] && orders[e.id].rev !== before;
+  if ((isNew || edited) && orders[e.id] && ready) { fresh.add(e.id); ding(); }
   render();
 }, ok => { $('#conn').textContent = ok ? '🟢 已連線' : '🔴 重新連線中'; });
 

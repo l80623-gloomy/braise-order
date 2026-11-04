@@ -105,9 +105,10 @@ export function dropToStrainer(items) {
   });
 }
 
+// order：{ no, items, toppings, label }，一碗播一次；label 例如「第 1/2 碗」
 export function pourToBowl(order) {
   return new Promise(resolve => {
-    const el = stage('起鍋！');
+    const el = stage(order.label ? `起鍋！${order.label}` : '起鍋！');
     const W = window.innerWidth;
     const bw = Math.min(W * 0.9, 400);
     const bowl = makeVessel('bowl');
@@ -157,7 +158,7 @@ export function pourToBowl(order) {
       .to(st, { x: 400, opacity: 0, duration: .5, ease: 'power2.in' });
 
     toppings(tl, bowl, order.toppings);
-    tl.add(() => { steam(el, 46, 50); sparkle(el, bowl); el.querySelector('.cap').textContent = `${order.no} 號 請取餐 🎉`; })
+    tl.add(() => { steam(el, 46, 50); sparkle(el, bowl); el.querySelector('.cap').textContent = order.label ? `${order.no} 號 ${order.label} 好了 🎉` : `${order.no} 號 請取餐 🎉`; })
       .to({}, { duration: 2.2 });
     finish(el, tl, resolve);
   });

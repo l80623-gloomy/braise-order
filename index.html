@@ -20,10 +20,11 @@
       <div><h1>滷味</h1><p>延續傳統・醇香味美</p></div>
     </header>
     <button class="my-btn hidden" id="myBtn"></button>
+    <div class="edit-bar hidden" id="editBar"><span id="editTxt"></span><button id="cancelEdit">取消修改</button></div>
     <nav class="tabs" id="tabs"></nav>
     <section class="wall" id="wall"></section>
     <div class="bar">
-      <div class="sum">已選 <span id="cnt">0</span> 樣　<b>$<span id="tot">0</span></b></div>
+      <div class="sum"><span class="bowl-lbl" id="bowlLbl"></span>已選 <span id="cnt">0</span> 樣　<b>$<span id="tot">0</span></b><small id="allTot"></small></div>
       <button class="btn" id="goBtn" disabled>下鍋！</button>
     </div>
   </main>
@@ -31,6 +32,7 @@
   <main id="waitView" class="wait hidden"></main>
 
   <div class="sheet-bg hidden" id="sheetBg"><div class="sheet" id="sheet"></div></div>
+  <div class="toast hidden" id="toast"></div>
 
   <script type="module" src="js/customer.js"></script>
 </body>

@@ -1,8 +1,9 @@
 // 客人端：竹牌點餐 → 配料／備註／付款 → 投入麵切 → 等候 → 倒入碗公
+// 客人看到的稱呼一律是一般稱呼（陳小姐）；「鳥蛋陳小姐」這種 Q 版叫號只在業者端
 // 一張單可以有好幾碗（同一個取餐號碼、一次結帳）；也可以另開一張單「再點一碗」
 // 店家接單（設定分鐘）之前，客人可以修改訂單
 import { CATEGORIES, ITEMS, SPICE, PAY, img, total } from './menu.js';
-import { send, listen, reduce, bowlsTotal, due, esc, callName } from './bus.js';
+import { send, listen, reduce, bowlsTotal, due, esc } from './bus.js';
 import { dropToStrainer, pourToBowl } from './anim.js';
 import { loadProfile, openProfile, customerOf } from './profile.js';
 
@@ -22,13 +23,13 @@ let myIds = load(KEY);
 let seen = load(SEEN);
 let profile = loadProfile();
 
-// 招牌右邊的「我」：頭像＋叫號稱呼，點了可以改資料
+// 招牌右邊的「我」：頭像＋稱呼，點了可以改資料
 function renderMe() {
   const b = $('#meBtn');
   b.classList.toggle('hidden', !profile);
   if (!profile) return;
   const c = customerOf(profile);
-  b.innerHTML = `<img src="${img(c.avatar)}" alt=""><span>${esc(callName(c))}</span><small>修改</small>`;
+  b.innerHTML = `<img src="${img(c.avatar)}" alt=""><span>${esc(c.name)}</span><small>修改</small>`;
 }
 function editProfile(then) {
   openProfile(p => { profile = p; renderMe(); if (then) then(); }, profile);
@@ -346,7 +347,7 @@ function ticket(o) {
   return `
     <div class="ticket ${done ? 'done' : ''}">
       <div class="no">取餐號碼<b>${esc(o.no)}</b>${many ? `<span class="nb">共 ${o.bowls.length} 碗</span>` : ''}</div>
-      ${o.customer ? `<div class="who">${o.customer.avatar ? `<img src="${img(o.customer.avatar)}" alt="">` : ''}${esc(callName(o.customer))}</div>` : ''}
+      ${o.customer ? `<div class="who">${o.customer.avatar ? `<img src="${img(o.customer.avatar)}" alt="">` : ''}${esc(o.customer.name)}</div>` : ''}
       ${payBadge(o)}
       <div class="status">${status}</div>
       ${ring}
@@ -434,7 +435,7 @@ function checkDone() {
     if (o && o.status === 'done' && !seen.includes(id)) {
       seen.push(id);
       const n = o.bowls.length;
-      o.bowls.forEach((b, i) => queue.push({ no: o.no, call: callName(o.customer), items: b.items, toppings: b.toppings, label: n > 1 ? `第 ${i + 1}/${n} 碗` : '' }));
+      o.bowls.forEach((b, i) => queue.push({ no: o.no, call: o.customer?.name || '', items: b.items, toppings: b.toppings, label: n > 1 ? `第 ${i + 1}/${n} 碗` : '' }));
     }
   }
   save();

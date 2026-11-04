@@ -112,12 +112,13 @@ document.querySelector('.board').onclick = async e => {
   if (a === 'done' && $('#autoCall').checked) announce(orders[id]);
 };
 
-/* ── 語音叫號：「二一四號，鳥蛋陳小姐，您的滷味好囉！」 ── */
+/* ── 語音叫號：「二一四號，陳小姐，您的滷味好囉！」
+   喇叭現場客人都聽得到，所以只念一般稱呼；Q 版叫法（鳥蛋陳小姐）只顯示在卡片上 ── */
 const DIGIT = '零一二三四五六七八九';
 function announce(o) {
   if (!o || !('speechSynthesis' in window)) return;
   const no = String(o.no).split('').map(d => DIGIT[d] ?? d).join('');
-  const who = callName(o.customer);
+  const who = o.customer?.name || '';
   const u = new SpeechSynthesisUtterance(`${no}號，${who ? who + '，' : ''}您的滷味好囉！`);
   u.lang = 'zh-TW';
   u.rate = .95;

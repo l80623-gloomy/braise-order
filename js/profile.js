@@ -1,7 +1,7 @@
 // 簡單登入（不綁會員）：手機＋稱呼＋Q 版頭像，存在客人自己的手機
 // 完整電話只留在本機；送給店家的只有末三碼（取餐核對用）
 import { CATEGORIES, ITEMS, img } from './menu.js';
-import { callName, esc } from './bus.js';
+import { esc } from './bus.js';
 
 const KEY = 'braise.profile';
 const TITLES = ['先生', '小姐', '不指定'];
@@ -37,7 +37,6 @@ export function openProfile(onDone, current) {
   box.classList.remove('hidden');
 
   const render = () => {
-    const call = display(p) ? callName({ name: display(p), avatar: p.avatar }) : '';
     box.innerHTML = `
       <div class="login-card">
         <img class="login-hero" src="assets/props/hero.webp" alt="">
@@ -52,14 +51,11 @@ export function openProfile(onDone, current) {
                <div class="seg">${TITLES.map(t => `<button data-title="${t}" class="${p.title === t ? 'on' : ''}">${t}</button>`).join('')}</div>
              </div>`}
         <button class="link" id="lgToggle">${p.useNick ? '改用姓氏稱呼' : '想用暱稱？'}</button>
-        <label>🥢 選一個 Q 版頭像（叫號時會用）</label>
+        <label>🥢 選一個 Q 版頭像</label>
         <div class="av-grid">
           ${Object.values(ITEMS).map(it => `<button data-av="${it.id}" class="${p.avatar === it.id ? 'on' : ''}" title="${it.name}"><img src="${img(it.id)}" alt="${it.name}" loading="lazy"></button>`).join('')}
         </div>
-        <div class="call-preview">
-          <img src="${img(p.avatar)}" alt="">
-          <div>叫號時會叫你<b>${call ? esc(call) : '（請先填稱呼）'}</b></div>
-        </div>
+        <div class="call-preview">${preview()}</div>
         <p class="err" id="lgErr"></p>
         <button class="btn" id="lgGo">${current ? '儲存' : '開始點餐'}</button>
         ${current ? '<button class="btn ghost dark" id="lgCancel">取消</button>' : ''}
@@ -90,11 +86,15 @@ export function openProfile(onDone, current) {
     const cancel = $('#lgCancel'); if (cancel) cancel.onclick = () => box.classList.add('hidden');
   };
 
+  // 預覽只顯示一般稱呼；Q 版叫號（鳥蛋陳小姐）只在業者端
+  function preview() {
+    return `<img src="${img(p.avatar)}" alt=""><div>我們會這樣稱呼你<b>${display(p) ? esc(display(p)) : '（請先填稱呼）'}</b></div>`;
+  }
+
   // 打字時只更新預覽，不整個重畫（避免輸入框失去焦點）；有在改就先收起錯誤訊息
   const refreshPreview = () => {
     $('#lgErr').textContent = '';
-    const call = display(p) ? callName({ name: display(p), avatar: p.avatar }) : '';
-    box.querySelector('.call-preview').innerHTML = `<img src="${img(p.avatar)}" alt=""><div>叫號時會叫你<b>${call ? esc(call) : '（請先填稱呼）'}</b></div>`;
+    box.querySelector('.call-preview').innerHTML = preview();
   };
 
   render();

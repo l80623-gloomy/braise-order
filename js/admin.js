@@ -73,7 +73,7 @@ function card(o) {
   const c = o.customer;
   return `<div class="card ${fresh.has(o.id) ? 'fresh' : ''}" data-id="${esc(o.id)}">
     <div class="hd"><b>${esc(o.no)}</b><span class="tm">${hhmm(o.ts)} 下單${n > 1 ? `・<strong>${n} 碗</strong>` : ''}</span><b style="font-size:20px;color:var(--ink)">$${o.total}</b></div>
-    ${c ? `<div class="who">${c.avatar ? `<img src="${img(c.avatar)}" alt="">` : ''}<span>${esc(callName(c))}</span>${c.tail ? `<small>電話末三碼 <b>${c.tail}</b></small>` : ''}</div>` : ''}
+    ${c ? `<div class="who">${c.avatar ? `<img src="${img(c.avatar)}" alt="">` : ''}<span>${esc(callName(c))}</span></div>` : ''}
     <div>${payTag(o)}${o.edited ? `<span class="paybadge edited">✏️ 客人已修改 ${hhmm(o.editedAt)}</span>` : ''}</div>
     ${o.bowls.map((b, i) => bowlHtml(b, i, n)).join('')}
     ${eta}
@@ -117,7 +117,7 @@ document.querySelector('.board').onclick = async e => {
 const DIGIT = '零一二三四五六七八九';
 function announce(o) {
   if (!o || !('speechSynthesis' in window)) return;
-  const no = String(o.no).split('').map(d => DIGIT[d] ?? d).join('');
+  const no = String(o.no).split('').map(d => d === '-' ? '之' : DIGIT[d] ?? d).join('');   // 393-2 念「三九三之二」
   const who = o.customer?.name || '';
   const u = new SpeechSynthesisUtterance(`${no}號，${who ? who + '，' : ''}您的滷味好囉！`);
   u.lang = 'zh-TW';

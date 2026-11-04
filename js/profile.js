@@ -59,7 +59,7 @@ export function openProfile(onDone, current) {
         <p class="err" id="lgErr"></p>
         <button class="btn" id="lgGo">${current ? '儲存' : '開始點餐'}</button>
         ${current ? '<button class="btn ghost dark" id="lgCancel">取消</button>' : ''}
-        <p class="privacy">電話只用於取餐核對與記住你的口味，不會另作他用。測試期間只會把電話<b>末三碼</b>傳給店家。</p>
+        <p class="privacy">電話只用於取餐核對與記住你的口味，不會另作他用。取餐號碼就是你的電話<b>末三碼</b>，測試期間也只會把這三碼傳給店家。</p>
       </div>`;
 
     const phone = $('#lgPhone');

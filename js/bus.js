@@ -79,7 +79,7 @@ export function reduce(orders, e) {
     if (!bowls.length) return orders;
     const t = bowlsTotal(bowls);
     orders[e.id] = {
-      id: e.id, no: String(e.no || '').slice(0, 4), ts: e.ts, pay: e.pay === 'online' ? 'online' : 'cash',
+      id: e.id, no: String(e.no || '').slice(0, 6), ts: e.ts, pay: e.pay === 'online' ? 'online' : 'cash',
       payMethod: String(e.payMethod || '').slice(0, 12), bowls, total: t, customer: cleanCustomer(e.customer),
       paidAmount: e.paid ? t : 0, status: 'new', eta: null, etaAt: null, rev: 0,
     };

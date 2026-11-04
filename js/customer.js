@@ -261,13 +261,22 @@ async function sendOrFail(ev, retry) {
   return false;
 }
 
+// 取餐號碼＝手機末三碼；還沒取餐的單已經有同號（同一人另開一張、或別人末三碼剛好一樣）就加「-2」「-3」
+function pickNo(tail) {
+  const used = new Set(Object.values(orders).filter(o => o.status !== 'done').map(o => o.no));
+  if (!used.has(tail)) return tail;
+  let k = 2;
+  while (used.has(`${tail}-${k}`)) k++;
+  return `${tail}-${k}`;
+}
+
 async function submitOrder(paid, method = '') {
   if (!profile) { closeSheet(); editProfile(() => submitOrder(paid, method)); return; }
   const bowls = draftBowls();
   const order = {
     type: 'order',
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    no: String(100 + Math.floor(Math.random() * 900)),
+    no: pickNo(profile.phone.slice(-3)),
     bowls, pay, payMethod: method, paid,
     customer: customerOf(profile),
   };
